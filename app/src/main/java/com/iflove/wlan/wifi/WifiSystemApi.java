@@ -22,6 +22,12 @@ final class WifiSystemApi {
     public static final int WIFI_AP_STATE_FAILED = 14;
     public static final int INVALID_NETWORK_ID = -1;
 
+    public static final int DISABLED_UNKNOWN_REASON                         = 0;
+    public static final int DISABLED_DNS_FAILURE                            = 1;
+    public static final int DISABLED_DHCP_FAILURE                           = 2;
+    public static final int DISABLED_AUTH_FAILURE                           = 3;
+    public static final int DISABLED_ASSOCIATION_REJECT                     = 4;
+
     public static boolean isHandshakeState(SupplicantState state) {
         switch (state) {
             case AUTHENTICATING:

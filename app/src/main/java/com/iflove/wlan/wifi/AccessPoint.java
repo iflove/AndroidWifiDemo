@@ -25,6 +25,7 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.KeyMgmt;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
@@ -277,50 +278,66 @@ class AccessPoint implements Comparable<AccessPoint> {
      * Updates the title and summary; may indirectly call notifyChanged()
      */
     private void refresh() {
-        //        setTitle(ssid);
-        //
-        //        Context context = getContext();
-        //        if (mConfig != null && mConfig.status == WifiConfiguration.Status.DISABLED) {
-        //            switch (mConfig.disableReason) {
-        //                case WifiConfiguration.DISABLED_AUTH_FAILURE:
-        //                    setSummary(context.getString(R.string.wifi_disabled_password_failure));
-        //                    break;
-        //                case WifiConfiguration.DISABLED_DHCP_FAILURE:
-        //                case WifiConfiguration.DISABLED_DNS_FAILURE:
-        //                    setSummary(context.getString(R.string.wifi_disabled_network_failure));
-        //                    break;
-        //                case WifiConfiguration.DISABLED_UNKNOWN_REASON:
-        //                    setSummary(context.getString(R.string.wifi_disabled_generic));
-        //            }
-        //        } else if (mRssi == Integer.MAX_VALUE) { // Wifi out of range
-        //            setSummary(context.getString(R.string.wifi_not_in_range));
-        //        } else if (mState != null) { // This is the active connection
-        //            setSummary(Summary.get(context, mState));
-        //        } else { // In range, not disabled.
-        //            StringBuilder summary = new StringBuilder();
-        //            if (mConfig != null) { // Is saved network
-        //                summary.append(context.getString(R.string.wifi_remembered));
-        //            }
-        //
-        //            if (security != SECURITY_NONE) {
-        //                String securityStrFormat;
-        //                if (summary.length() == 0) {
-        //                    securityStrFormat = context.getString(R.string.wifi_secured_first_item);
-        //                } else {
-        //                    securityStrFormat = context.getString(R.string.wifi_secured_second_item);
-        //                }
-        //                summary.append(String.format(securityStrFormat, getSecurityString(true)));
-        //            }
-        //
-        //            if (mConfig == null && wpsAvailable) { // Only list WPS available for unsaved networks
-        //                if (summary.length() == 0) {
-        //                    summary.append(context.getString(R.string.wifi_wps_available_first_item));
-        //                } else {
-        //                    summary.append(context.getString(R.string.wifi_wps_available_second_item));
-        //                }
-        //            }
-        //            setSummary(summary.toString());
-        //        }
+        if (mState!=null){
+            System.out.println(mState);
+        }
+        //TODO 4.4
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
+            if (mConfig != null && mConfig.status == WifiConfiguration.Status.DISABLED) {
+                try {
+                    mConfig.getClass().getDeclaredField("disableReason");
+                } catch (NoSuchFieldException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+
+//                setTitle(ssid);
+//
+//                Context context = getContext();
+//                if (mConfig != null && mConfig.status == WifiConfiguration.Status.DISABLED) {
+//                    mConfig.
+//                    switch (mConfig.disableReason) {
+//                        case WifiConfiguration.DISABLED_AUTH_FAILURE:
+//                            setSummary(context.getString(R.string.wifi_disabled_password_failure));
+//                            break;
+//                        case WifiConfiguration.DISABLED_DHCP_FAILURE:
+//                        case WifiConfiguration.DISABLED_DNS_FAILURE:
+//                            setSummary(context.getString(R.string.wifi_disabled_network_failure));
+//                            break;
+//                        case WifiConfiguration.DISABLED_UNKNOWN_REASON:
+//                            setSummary(context.getString(R.string.wifi_disabled_generic));
+//                    }
+//                } else if (mRssi == Integer.MAX_VALUE) { // Wifi out of range
+//                    setSummary(context.getString(R.string.wifi_not_in_range));
+//                } else if (mState != null) { // This is the active connection
+//                    setSummary(Summary.get(context, mState));
+//                } else { // In range, not disabled.
+//                    StringBuilder summary = new StringBuilder();
+//                    if (mConfig != null) { // Is saved network
+//                        summary.append(context.getString(R.string.wifi_remembered));
+//                    }
+//
+//                    if (security != SECURITY_NONE) {
+//                        String securityStrFormat;
+//                        if (summary.length() == 0) {
+//                            securityStrFormat = context.getString(R.string.wifi_secured_first_item);
+//                        } else {
+//                            securityStrFormat = context.getString(R.string.wifi_secured_second_item);
+//                        }
+//                        summary.append(String.format(securityStrFormat, getSecurityString(true)));
+//                    }
+//
+//                    if (mConfig == null && wpsAvailable) { // Only list WPS available for unsaved networks
+//                        if (summary.length() == 0) {
+//                            summary.append(context.getString(R.string.wifi_wps_available_first_item));
+//                        } else {
+//                            summary.append(context.getString(R.string.wifi_wps_available_second_item));
+//                        }
+//                    }
+//                    setSummary(summary.toString());
+//                }
     }
 
     /**

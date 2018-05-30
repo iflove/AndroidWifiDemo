@@ -124,7 +124,7 @@ public class WifiApHelper {
             //network state change events so the apps dont have to worry about
             //ignoring supplicant state change when network is connected
             //to get more fine grained information.
-            SupplicantState state = (SupplicantState) intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
+            SupplicantState state = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
             if (!mConnected.get() && WifiSystemApi.isHandshakeState(state)) {
                 updateConnectionState(WifiInfo.getDetailedStateOf(state));
             } else {
@@ -134,7 +134,7 @@ public class WifiApHelper {
                 updateConnectionState(null);
             }
         } else if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)) {
-            NetworkInfo info = (NetworkInfo) intent.getParcelableExtra(
+            NetworkInfo info = intent.getParcelableExtra(
                     WifiManager.EXTRA_NETWORK_INFO);
             mConnected.set(info.isConnected());
             updateAccessPoints();
@@ -213,9 +213,9 @@ public class WifiApHelper {
         for (AccessPoint accessPoint : mAccessPoints) {
             accessPoint.update(mLastInfo, mLastState);
         }
-        //        if (mWifiStateListener != null) {
-        //            mWifiStateListener.onChangedAccessPoints(mAccessPoints);
-        //        }
+        if (mWifiStateListener != null) {
+            mWifiStateListener.onChangedAccessPoints(mAccessPoints);
+        }
     }
 
     /**
