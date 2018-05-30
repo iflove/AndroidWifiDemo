@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
-              android:layout_height="45dp"
+              android:layout_height="60dp"
               android:gravity="center_vertical"
               android:orientation="vertical"
               android:paddingLeft="20dp"
@@ -11,12 +11,16 @@
         android:id="@+id/wifiNameTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="@android:color/black"
+        android:maxLines="1"
+        android:textSize="18sp"
         />
 
     <TextView
-        android:id="@+id/connectStateTextView"
+        android:id="@+id/summaryTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="gone"
+        android:maxLines="1"
+        android:textSize="16sp"
         />
 </LinearLayout>

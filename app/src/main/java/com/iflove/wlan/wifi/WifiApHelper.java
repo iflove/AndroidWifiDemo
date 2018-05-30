@@ -21,7 +21,6 @@ import android.widget.Switch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -156,26 +155,21 @@ public class WifiApHelper {
         if (mWifiStateListener != null) {
             mWifiStateListener.onChangedWifiState(wifiState);
         }
+        mAccessPoints.clear();
         if (wifiState == WifiManager.WIFI_STATE_ENABLED) {
             // AccessPoints are automatically sorted with TreeSet.
             List<AccessPoint> constructAccessPoints = constructAccessPoints();
             if (!constructAccessPoints.isEmpty() && mAccessPoints.equals(constructAccessPoints)) {
                 return;
             }
-            mAccessPoints.clear();
             mAccessPoints.addAll(constructAccessPoints);
-            if (mWifiStateListener != null) {
-                mWifiStateListener.onChangedAccessPoints(mAccessPoints);
-            }
+        }
+        if (mWifiStateListener != null) {
+            mWifiStateListener.onChangedAccessPoints(mAccessPoints);
         }
     }
 
     private void updateWifiState(int state) {
-        //        Activity activity = getActivity();
-        //        if (activity != null) {
-        //            activity.invalidateOptionsMenu();
-        //        }
-
         switch (state) {
             case WifiManager.WIFI_STATE_DISABLED:
                 enableWifiSwitch();
@@ -219,9 +213,9 @@ public class WifiApHelper {
         for (AccessPoint accessPoint : mAccessPoints) {
             accessPoint.update(mLastInfo, mLastState);
         }
-        if (mWifiStateListener != null) {
-            mWifiStateListener.onChangedAccessPoints(mAccessPoints);
-        }
+        //        if (mWifiStateListener != null) {
+        //            mWifiStateListener.onChangedAccessPoints(mAccessPoints);
+        //        }
     }
 
     /**
@@ -237,7 +231,7 @@ public class WifiApHelper {
         if (configs != null) {
             for (WifiConfiguration config : configs) {
                 AccessPoint accessPoint = new AccessPoint(mContext, config);
-                accessPoint.isScan = false;
+                accessPoint.isSaveConfig = true;
                 accessPoint.update(mLastInfo, mLastState);
                 scanAccessPoints.add(accessPoint);
                 apMap.put(accessPoint.ssid, accessPoint);
@@ -255,7 +249,6 @@ public class WifiApHelper {
                 boolean found = false;
                 for (AccessPoint accessPoint : apMap.getAll(result.SSID)) {
                     if (accessPoint.update(result)) {
-                        accessPoint.isScan = true;
                         found = true;
                     }
                 }
@@ -266,14 +259,7 @@ public class WifiApHelper {
                 }
             }
         }
-        //todo 优化
-        Iterator<AccessPoint> accessPointIterator = scanAccessPoints.iterator();
-        while (accessPointIterator.hasNext()) {
-            AccessPoint next = accessPointIterator.next();
-            if (!next.isScan) {
-                accessPointIterator.remove();
-            }
-        }
+
         // Pre-sort scanAccessPoints to speed preference insertion
         Collections.sort(scanAccessPoints);
         return scanAccessPoints;
@@ -329,11 +315,9 @@ public class WifiApHelper {
                 mRetry = 0;
             } else if (++mRetry >= 3) {
                 mRetry = 0;
-                //                Activity activity = getActivity();
-                //                if (activity != null) {
-                //                    Toast.makeText(activity, R.string.wifi_fail_to_scan,
-                //                            Toast.LENGTH_LONG).show();
-                //                }
+                if (mWifiStateListener != null) {
+                    mWifiStateListener.onWifiScanFailure();
+                }
                 return;
             }
             sendEmptyMessageDelayed(0, WIFI_RESCAN_INTERVAL_MS);
@@ -365,38 +349,93 @@ public class WifiApHelper {
         }
     }
 
-    public void connect(@NonNull final AccessPoint accessPoint, @NonNull final ProxyActionListener connectListener) {
+    public void connect(@NonNull final AccessPoint accessPoint) {
         if (accessPoint.networkId != WifiSystemApi.INVALID_NETWORK_ID) {
-            //mWifiManager.enableNetwork(accessPoint.networkId,true);
-            WifiSystemApi.createWifiConnectListener(mWifiManager, accessPoint.networkId, connectListener);
+            mWifiManager.enableNetwork(accessPoint.networkId, true);
         } else if (accessPoint.security == AccessPoint.SECURITY_NONE) {
             /** Bypass dialog for unsecured networks */
             accessPoint.generateOpenNetworkConfig();
-            WifiSystemApi.createWifiConnectListener(mWifiManager, accessPoint.getConfig(), connectListener);
+            int networkId = mWifiManager.addNetwork(accessPoint.getConfig());
+            mWifiManager.enableNetwork(networkId, true);
         } else {
-            showDialog(accessPoint, true);
+            if (mWifiStateListener != null) {
+                mWifiStateListener.onNeedInputWifiPassword(accessPoint);
+            }
         }
     }
 
-    private void showDialog(AccessPoint accessPoint, boolean b) {
+    public void connect(@NonNull final AccessPoint accessPoint, @NonNull final String password) {
+        WifiConfiguration config = getConfig(accessPoint, password);
+        if (config != null) {
+            int networkId = mWifiManager.addNetwork(config);
+            mWifiManager.enableNetwork(networkId, true);
+        }
+    }
 
+    private WifiConfiguration getConfig(@NonNull final AccessPoint accessPoint, @NonNull final String password) {
+        if (accessPoint == null) {
+            return null;
+        }
+        if (accessPoint.networkId != WifiSystemApi.INVALID_NETWORK_ID) {
+            return null;
+        }
+
+        WifiConfiguration config = new WifiConfiguration();
+
+        if (accessPoint.networkId == WifiSystemApi.INVALID_NETWORK_ID) {
+            config.SSID = AccessPoint.convertToQuotedString(accessPoint.ssid);
+
+        } else {
+            config.networkId = accessPoint.networkId;
+        }
+
+        switch (accessPoint.security) {
+            case AccessPoint.SECURITY_NONE:
+                config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+                break;
+
+            case AccessPoint.SECURITY_WEP:
+                config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+                config.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
+                config.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.SHARED);
+                int length = password.length();
+                if (length != 0) {
+                    // WEP-40, WEP-104, and 256-bit WEP (WEP-232?)
+                    if ((length == 10 || length == 26 || length == 58) &&
+                            password.matches("[0-9A-Fa-f]*")) {
+                        config.wepKeys[0] = password;
+                    } else {
+                        config.wepKeys[0] = '"' + password + '"';
+                    }
+                }
+                break;
+
+            case AccessPoint.SECURITY_PSK:
+                config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+                length = password.length();
+                if (length != 0) {
+                    if (password.matches("[0-9A-Fa-f]{64}")) {
+                        config.preSharedKey = password;
+                    } else {
+                        config.preSharedKey = '"' + password + '"';
+                    }
+                }
+                break;
+
+            case AccessPoint.SECURITY_EAP:
+                //TODO HOW to do
+                return null;
+
+            default:
+                return null;
+        }
+
+        return config;
     }
 
 
     public WifiManager getWifiManager() {
         return mWifiManager;
-    }
-
-    public interface ProxyActionListener {
-        /**
-         * The operation succeeded
-         */
-        void onSuccess();
-
-        /**
-         * The operation failure
-         */
-        void onFailure(int reason);
     }
 
     public interface WifiStateListener {
@@ -409,5 +448,17 @@ public class WifiApHelper {
          * AccessPoints changed
          */
         void onChangedAccessPoints(final List<AccessPoint> accessPoints);
+
+        /**
+         * wifi scan fail
+         */
+        void onWifiScanFailure();
+
+        /**
+         * show input dialog
+         *
+         * @param accessPoint
+         */
+        void onNeedInputWifiPassword(final AccessPoint accessPoint);
     }
 }

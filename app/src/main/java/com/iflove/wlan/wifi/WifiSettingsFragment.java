@@ -1,15 +1,20 @@
 package com.iflove.wlan.wifi;
 
+import android.app.AlertDialog;
 import android.app.Fragment;
+import android.content.DialogInterface;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v4.widget.ContentLoadingProgressBar;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -27,8 +32,9 @@ import java.util.List;
 public class WifiSettingsFragment extends Fragment {
     private static final String TAG = "WifiSettingsFragment";
     private ListView mListView;
+    private ContentLoadingProgressBar mProgressBar;
     private Switch mWifiSwitch;
-
+    private TextView mSummaryTextView;
     private WifiApHelper mWifiApHelper;
     private WifiListAdapter mWifiListAdapter;
 
@@ -41,19 +47,25 @@ public class WifiSettingsFragment extends Fragment {
                 switch (state) {
                     case WifiManager.WIFI_STATE_ENABLED:
                         // AccessPoints are automatically sorted with TreeSet.
-
+                        mSummaryTextView.setText("");
+                        mSummaryTextView.setVisibility(View.GONE);
+                        mProgressBar.setVisibility(View.GONE);
                         break;
 
                     case WifiManager.WIFI_STATE_ENABLING:
-                        //                getPreferenceScreen().removeAll();
+                        mProgressBar.setVisibility(View.VISIBLE);
+                        mSummaryTextView.setText("正在开启...");
+                        mSummaryTextView.setVisibility(View.VISIBLE);
                         break;
 
                     case WifiManager.WIFI_STATE_DISABLING:
-                        //                addMessagePreference(R.string.wifi_stopping);
+                        mSummaryTextView.setText("正在关闭...");
+                        mSummaryTextView.setVisibility(View.VISIBLE);
                         break;
-
                     case WifiManager.WIFI_STATE_DISABLED:
-                        //                setOffMessage();
+                        mSummaryTextView.setText("");
+                        mSummaryTextView.setVisibility(View.GONE);
+                        mProgressBar.setVisibility(View.GONE);
                         break;
                     default:
                         break;
@@ -61,12 +73,58 @@ public class WifiSettingsFragment extends Fragment {
             }
 
             @Override
-            public void onChangedAccessPoints(List<AccessPoint> accessPoints) {
-                mWifiListAdapter.setDataSources(accessPoints);
-                mWifiListAdapter.notifyDataSetChanged();
+            public void onChangedAccessPoints(final List<AccessPoint> accessPoints) {
+                Log.d(TAG, "onChangedAccessPoints: " + accessPoints.size());
+                mListView.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        mWifiListAdapter.setDataSources(accessPoints);
+                        mWifiListAdapter.notifyDataSetChanged();
+                    }
+                }, 50);
             }
+
+            @Override
+            public void onWifiScanFailure() {
+                Toast.makeText(getActivity(), "WiFi扫描失败", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onNeedInputWifiPassword(AccessPoint accessPoint) {
+                showInputPasswordDialog(accessPoint);
+            }
+
         });
     }
+
+    private void showInputPasswordDialog(final AccessPoint accessPoint) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this.getActivity());
+        builder.setTitle("Title-" + accessPoint.ssid);
+
+        // Set up the input
+        final EditText input = new EditText(this.getActivity());
+        // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        builder.setView(input);
+
+        // Set up the buttons
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String text = input.getText().toString();
+                mWifiApHelper.connect(accessPoint, "12345678");
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
+    }
+
 
     @Override
     public void onResume() {
@@ -85,30 +143,22 @@ public class WifiSettingsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_wifi_settings, container, false);
         mListView = rootView.findViewById(R.id.listView);
+        mProgressBar = rootView.findViewById(R.id.progressBar);
         View headerView = inflater.inflate(R.layout.fragment_wifi_settings_switch_header, mListView, false);
         mListView.addHeaderView(headerView);
-        mWifiSwitch = headerView.findViewById(R.id.wifiSwith);
+        mWifiSwitch = headerView.findViewById(R.id.wifiSwitch);
+        mSummaryTextView = headerView.findViewById(R.id.summaryTextView);
+
         mWifiListAdapter = new WifiListAdapter();
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 List<AccessPoint> dataSources = mWifiListAdapter.getDataSources();
                 AccessPoint accessPoint = dataSources.get(position - 1);
-                Log.d(TAG, "onItemClick: " + accessPoint);
                 if (accessPoint.isConnectedState()) {
                     Toast.makeText(getActivity(), "WiFi已连接", Toast.LENGTH_SHORT).show();
                 } else {
-                    mWifiApHelper.connect(accessPoint, new WifiApHelper.ProxyActionListener() {
-                        @Override
-                        public void onSuccess() {
-                            Toast.makeText(getActivity(), "WiFi连接成功", Toast.LENGTH_SHORT).show();
-                        }
-
-                        @Override
-                        public void onFailure(int reason) {
-                            Toast.makeText(getActivity(), "WiFi连接失败", Toast.LENGTH_SHORT).show();
-                        }
-                    });
+                    mWifiApHelper.connect(accessPoint);
                 }
             }
         });
@@ -156,13 +206,23 @@ public class WifiSettingsFragment extends Fragment {
             }
             AccessPoint accessPoint = mDataSources.get(position);
             TextView wifiNameTextView = convertView.findViewById(R.id.wifiNameTextView);
-            TextView connectStateTextView = convertView.findViewById(R.id.connectStateTextView);
+            TextView summaryTextView = convertView.findViewById(R.id.summaryTextView);
             wifiNameTextView.setText(accessPoint.ssid);
             if (accessPoint.isConnectedState()) {
-                connectStateTextView.setVisibility(View.VISIBLE);
-                connectStateTextView.setText("已连接");
+                summaryTextView.setText("已连接");
             } else {
-                connectStateTextView.setVisibility(View.GONE);
+                AccessPoint.PskType pskType = accessPoint.getPskType();
+                String saveText = "已保存";
+                summaryTextView.setVisibility(View.VISIBLE);
+                if (pskType == AccessPoint.PskType.UNKNOWN) {
+                    if (accessPoint.isSaveConfig) {
+                        summaryTextView.setText(saveText);
+                    } else {
+                        summaryTextView.setVisibility(View.GONE);
+                    }
+                } else {
+                    summaryTextView.setText((accessPoint.isSaveConfig ? saveText + ", " : "") + "通过 " + pskType.name() + " 进行保护");
+                }
             }
             return convertView;
         }

@@ -51,12 +51,12 @@ class AccessPoint implements Comparable<AccessPoint> {
     int security;
     int networkId;
     boolean wpsAvailable = false;
-    boolean isScan = true;
+    boolean isSaveConfig = false;
 
     PskType pskType = PskType.UNKNOWN;
 
     private WifiConfiguration mConfig;
-    /* package */ ScanResult mScanResult;
+    private ScanResult mScanResult;
 
     private int mRssi;
     private WifiInfo mInfo;
@@ -267,6 +267,10 @@ class AccessPoint implements Comparable<AccessPoint> {
 
     public PskType getPskType() {
         return pskType;
+    }
+
+    public ScanResult getScanResult() {
+        return mScanResult;
     }
 
     /**
