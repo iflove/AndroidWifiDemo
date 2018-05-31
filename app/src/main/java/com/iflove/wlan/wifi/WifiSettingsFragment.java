@@ -21,6 +21,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -31,6 +32,8 @@ import com.iflove.wlan.R;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.iflove.wlan.wifi.AccessPoint.SECURITY_NONE;
 
 /**
  * TODO 功能描述
@@ -49,6 +52,11 @@ public class WifiSettingsFragment extends Fragment {
     private static final int MENU_ID_FORGET = Menu.FIRST + 7;
     private static final int MENU_ID_MODIFY = Menu.FIRST + 8;
     private AccessPoint mSelectedAccessPoint;
+    private static final int[] STATE_SECURED = {
+            R.attr.state_encrypted
+    };
+    private static final int[] STATE_NONE = {};
+
     private final WifiSystemApi.ProxyActionListener mForgetActionListener = new WifiSystemApi.ProxyActionListener() {
         @Override
         public void onSuccess() {
@@ -225,7 +233,7 @@ public class WifiSettingsFragment extends Fragment {
             return;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(this.getActivity());
-        builder.setTitle("Title-" + accessPoint.ssid);
+        builder.setTitle("连接-" + accessPoint.ssid);
 
         // Set up the input
         final EditText input = new EditText(this.getActivity());
@@ -289,17 +297,31 @@ public class WifiSettingsFragment extends Fragment {
             final AccessPoint accessPoint = mDataSources.get(position);
             TextView wifiNameTextView = convertView.findViewById(R.id.wifiNameTextView);
             final TextView summaryTextView = convertView.findViewById(R.id.summaryTextView);
+            ImageView signal = convertView.findViewById(R.id.signal);
+            int level = accessPoint.getLevel();
+            int security = accessPoint.getSecurity();
+            if (level == -1) {
+                signal.setImageDrawable(null);
+            } else {
+                //根据信号强弱选择对应的图标
+                signal.setImageLevel(level);
+                //这种设置和在XML中android:src="?attr/wifi_signal"设置是等价的
+                signal.setImageDrawable(context.getTheme().obtainStyledAttributes(new int[]{R.attr.wifi_signal}).getDrawable(0));
+
+                signal.setImageState((security != SECURITY_NONE) ? STATE_SECURED : STATE_NONE, true);
+            }
             wifiNameTextView.setText(accessPoint.ssid);
             if (accessPoint.isConnectedState()) {
                 summaryTextView.setText(R.string.wifi_connected);
             } else {
                 final WifiConfiguration config = accessPoint.getConfig();
                 final NetworkInfo.DetailedState state = accessPoint.getState();
-                int security = accessPoint.getSecurity();
-                int rssi = accessPoint.getLevel();
                 if (state != null) {
                     // This is the active connection
                     summaryTextView.setText(Summary.get(context, state));
+                } else if (level == -1) {
+                    // Wifi out of range
+                    summaryTextView.setText(R.string.wifi_not_in_range);
                 } else if (config != null && config.status == WifiConfiguration.Status.DISABLED) {
                     try {
                         //TODO 如何兼容高版本
@@ -328,16 +350,13 @@ public class WifiSettingsFragment extends Fragment {
                     } catch (IllegalAccessException e) {
                         e.printStackTrace();
                     }
-                } else if (rssi == Integer.MAX_VALUE) {
-                    // Wifi out of range
-                    summaryTextView.setText(R.string.wifi_not_in_range);
                 } else { // In range, not disabled.
                     StringBuilder summary = new StringBuilder();
                     if (config != null || accessPoint.isSaveConfig) {
                         // Is saved network
                         summary.append(context.getResources().getString(R.string.wifi_remembered));
                     }
-                    if (security != AccessPoint.SECURITY_NONE) {
+                    if (security != SECURITY_NONE) {
                         String securityStrFormat;
                         if (summary.length() == 0) {
                             securityStrFormat = context.getString(R.string.wifi_secured_first_item);

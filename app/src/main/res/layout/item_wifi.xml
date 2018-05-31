@@ -3,24 +3,42 @@
               android:layout_width="match_parent"
               android:layout_height="60dp"
               android:gravity="center_vertical"
-              android:orientation="vertical"
+              android:orientation="horizontal"
               android:paddingLeft="20dp"
               android:paddingRight="20dp">
 
-    <TextView
-        android:id="@+id/wifiNameTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:textColor="@android:color/black"
-        android:textSize="18sp"
-        />
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="60dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/summaryTextView"
+
+        <TextView
+            android:id="@+id/wifiNameTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textColor="@android:color/black"
+            android:textSize="18sp"
+            />
+
+        <TextView
+            android:id="@+id/summaryTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textSize="16sp"
+            />
+
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/signal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:textSize="16sp"
-        />
+        android:contentDescription="@null"
+        android:src="?attr/wifi_signal"/>
 </LinearLayout>
