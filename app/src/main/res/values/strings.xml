@@ -1,3 +1,34 @@
 <resources>
     <string name="app_name">My WLAN</string>
+    <string name="wifi_disabled_password_failure">"身份验证出现问题"</string>
+    <string name="wifi_disabled_association_reject">"拒绝加入"</string>
+    <string name="wifi_disabled_network_failure">"已停用状况不佳的互联网连接"</string>
+    <string name="wifi_disabled_generic">"已停用"</string>
+    <string name="wifi_not_in_range">"不在范围内"</string>
+    <string name="wifi_remembered">"已保存"</string>
+    <string name="wifi_secured_first_item">"通过 %1$s 进行保护"</string>
+    <string name="wifi_secured_second_item">"，通过 %1$s 进行保护"</string>
+    <string name="wifi_security_short_eap">802.1x</string>
+    <string name="wifi_security_eap">802.1x EAP</string>
+
+    <string name="wifi_security_short_wpa">WPA</string>
+    <string name="wifi_security_short_wpa2">WPA2</string>
+    <string name="wifi_security_short_wpa_wpa2">WPA/WPA2</string>
+    <string name="wifi_security_short_psk_generic">@string/wifi_security_short_wpa_wpa2</string>
+
+    <string name="wifi_security_wpa">WPA PSK</string>
+    <string name="wifi_security_wpa2">WPA2 PSK</string>
+    <string name="wifi_security_wpa_wpa2">WPA/WPA2 PSK</string>
+    <string name="wifi_security_psk_generic">@string/wifi_security_wpa_wpa2</string>
+    <string name="wifi_security_short_wep">WEP</string>
+    <string name="wifi_security_wep">WEP</string>
+    <string name="wifi_security_none">None</string>
+    <string name="wifi_connected">已连接</string>
+    <string name="wifi_wifi_connected">WiFi已连接</string>
+    <string name="wifi_scan_failed">WiFi扫描失败</string>
+    <string name="wifi_starting">正在开启...</string>
+    <string name="wifi_closing">正在关闭...</string>
+    <string name="wifi_menu_connect">"连接到网络"</string>
+    <string name="wifi_menu_forget">"不保存网络"</string>
+    <string name="wifi_menu_modify">"修改网络"</string>
 </resources>
