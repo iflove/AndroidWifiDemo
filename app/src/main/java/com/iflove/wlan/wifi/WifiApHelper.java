@@ -14,7 +14,6 @@ import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
-import android.util.Log;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 
@@ -108,7 +107,7 @@ public class WifiApHelper {
 
     private void handleEvent(Context context, Intent intent) {
         String action = intent.getAction();
-        Log.i(TAG, "action：" + action);
+        /*Log.i(TAG, "action：" + action);*/
         if (Intent.ACTION_AIRPLANE_MODE_CHANGED.equals(action)) {
             enableWifiSwitch();
         } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(action)) {
@@ -124,7 +123,7 @@ public class WifiApHelper {
             //network state change events so the apps dont have to worry about
             //ignoring supplicant state change when network is connected
             //to get more fine grained information.
-            SupplicantState state = (SupplicantState) intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
+            SupplicantState state = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
             if (!mConnected.get() && WifiSystemApi.isHandshakeState(state)) {
                 updateConnectionState(WifiInfo.getDetailedStateOf(state));
             } else {
@@ -134,7 +133,7 @@ public class WifiApHelper {
                 updateConnectionState(null);
             }
         } else if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)) {
-            NetworkInfo info = (NetworkInfo) intent.getParcelableExtra(
+            NetworkInfo info = intent.getParcelableExtra(
                     WifiManager.EXTRA_NETWORK_INFO);
             mConnected.set(info.isConnected());
             updateAccessPoints();
@@ -213,9 +212,9 @@ public class WifiApHelper {
         for (AccessPoint accessPoint : mAccessPoints) {
             accessPoint.update(mLastInfo, mLastState);
         }
-        //        if (mWifiStateListener != null) {
-        //            mWifiStateListener.onChangedAccessPoints(mAccessPoints);
-        //        }
+        if (mWifiStateListener != null) {
+            mWifiStateListener.onChangedAccessPoints(mAccessPoints);
+        }
     }
 
     /**
@@ -230,7 +229,7 @@ public class WifiApHelper {
         final List<WifiConfiguration> configs = mWifiManager.getConfiguredNetworks();
         if (configs != null) {
             for (WifiConfiguration config : configs) {
-                AccessPoint accessPoint = new AccessPoint(mContext, config);
+                AccessPoint accessPoint = new AccessPoint(config);
                 accessPoint.isSaveConfig = true;
                 accessPoint.update(mLastInfo, mLastState);
                 scanAccessPoints.add(accessPoint);
@@ -253,7 +252,7 @@ public class WifiApHelper {
                     }
                 }
                 if (!found) {
-                    AccessPoint accessPoint = new AccessPoint(mContext, result);
+                    AccessPoint accessPoint = new AccessPoint(result);
                     scanAccessPoints.add(accessPoint);
                     apMap.put(accessPoint.ssid, accessPoint);
                 }
@@ -349,11 +348,19 @@ public class WifiApHelper {
         }
     }
 
+    public void forget(@NonNull final AccessPoint accessPoint, @NonNull final WifiSystemApi.ProxyActionListener listener) {
+        if (accessPoint.networkId != WifiSystemApi.INVALID_NETWORK_ID) {
+            WifiSystemApi.forget(mWifiManager, accessPoint.networkId, listener);
+        }
+    }
+
     public void connect(@NonNull final AccessPoint accessPoint) {
         if (accessPoint.networkId != WifiSystemApi.INVALID_NETWORK_ID) {
+            disconnect();
             mWifiManager.enableNetwork(accessPoint.networkId, true);
         } else if (accessPoint.security == AccessPoint.SECURITY_NONE) {
             /** Bypass dialog for unsecured networks */
+            disconnect();
             accessPoint.generateOpenNetworkConfig();
             int networkId = mWifiManager.addNetwork(accessPoint.getConfig());
             mWifiManager.enableNetwork(networkId, true);
@@ -367,8 +374,16 @@ public class WifiApHelper {
     public void connect(@NonNull final AccessPoint accessPoint, @NonNull final String password) {
         WifiConfiguration config = getConfig(accessPoint, password);
         if (config != null) {
+            disconnect();
             int networkId = mWifiManager.addNetwork(config);
             mWifiManager.enableNetwork(networkId, true);
+        }
+    }
+
+    private void disconnect() {
+        WifiInfo connectionInfo = mWifiManager.getConnectionInfo();
+        if (connectionInfo != null) {
+            mWifiManager.disableNetwork(connectionInfo.getNetworkId());
         }
     }
 
@@ -376,18 +391,8 @@ public class WifiApHelper {
         if (accessPoint == null) {
             return null;
         }
-        if (accessPoint.networkId != WifiSystemApi.INVALID_NETWORK_ID) {
-            return null;
-        }
-
         WifiConfiguration config = new WifiConfiguration();
-
-        if (accessPoint.networkId == WifiSystemApi.INVALID_NETWORK_ID) {
-            config.SSID = AccessPoint.convertToQuotedString(accessPoint.ssid);
-
-        } else {
-            config.networkId = accessPoint.networkId;
-        }
+        config.SSID = AccessPoint.convertToQuotedString(accessPoint.ssid);
 
         switch (accessPoint.security) {
             case AccessPoint.SECURITY_NONE:
@@ -433,6 +438,9 @@ public class WifiApHelper {
         return config;
     }
 
+    public Scanner getScanner() {
+        return mScanner;
+    }
 
     public WifiManager getWifiManager() {
         return mWifiManager;
